@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 import os
 import ast
+import json
 
 def load_data(csv_file):
     """
@@ -48,9 +49,17 @@ def display_story_details(row):
     st.subheader("Scene Settings")
     st.write(row['scene_settings'])
 
+    st.subheader("Scene Settings with Concept Tokens")
+    st.write(row['scene_settings_concept_tokens'])
+
     # Display Scene Captions
     st.subheader("Scene Captions")
     st.write(row['scene_captions'])
+
+
+
+
+
 
     # Display Image
     st.subheader("Story Image")
@@ -93,6 +102,29 @@ def display_story_details(row):
     #     st.error("Oops! That's not the correct answer.")
 
 
+def replace_tokens(row):
+    # Parse the strings into Python data structures
+    scene_list = ast.literal_eval(row["scene_settings"])
+    concept_dict = ast.literal_eval(row["concept_tokens_mapping"])
+
+    # Replace tokens in each scene
+    replaced_scenes = []
+    for scene in scene_list:
+        for token, description in concept_dict.items():
+            scene = scene.replace(f"{{{token}}}", description)
+        replaced_scenes.append(scene)
+
+    # Convert the list back to a string representation
+    return json.dumps(replaced_scenes)
+
+def parse_scene_settings(data):
+    if isinstance(data, str):
+        # Use ast.literal_eval to safely evaluate the string as a Python list
+        return ast.literal_eval(data)
+    return data  # If it's already a list, return as is
+
+
+
 def main():
     # Set page configuration
     st.set_page_config(page_title="Story Quiz App", page_icon=":book:", layout="wide")
@@ -115,6 +147,9 @@ def main():
                 max_value=len(df),
                 value=1
             )
+
+            df["scene_settings_concept_tokens"] = df.apply(replace_tokens, axis=1)
+            # df["scene_settings_concept_tokens"] = df["scene_settings_concept_tokens"].apply(parse_scene_settings)
 
             # Adjust index to 0-based
             row = df.iloc[story_number - 1]
